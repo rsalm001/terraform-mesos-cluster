@@ -1,0 +1,24 @@
+terraform init
+terraform apply
+sh -ac '. ./environment.sh; terraform apply'
+
+# Inspect the state
+terraform show
+
+# Format the file
+terraform fmt
+
+# Destroy infrastructure
+terraform destroy
+
+data resource to look up tagged existing resources
+
+remote state with s3/dynamo db
+
+workspaces for environment specific deployments
+
+workspaces with maps to lookup variables
+
+cloud pose
+
+chalis
