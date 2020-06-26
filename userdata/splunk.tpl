@@ -17,4 +17,4 @@ tar xf splunkbak.tgz
 
 chown -R ubuntu:ubuntu /home/ubuntu/apps/
 
-unuser -l ubuntu -c "/home/ubuntu/apps/splunk/bin/splunk start --accept-license"
+runuser -l ubuntu -c "/home/ubuntu/apps/splunk/bin/splunk start --accept-license --no-prompt --answer-yes"
