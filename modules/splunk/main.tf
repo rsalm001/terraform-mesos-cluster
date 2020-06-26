@@ -1,9 +1,10 @@
 
 data "template_file" "user_data" {
-    template = file("${path.root}/userdata/zookeeper.tpl")
+    template = file("${path.root}/userdata/splunk.tpl")
 }
 
-resource "aws_instance" "zookeeper" {
+resource "aws_instance" "splunk" {
+    count = var.enabled ? 1 : 0
     subnet_id = var.subnet_id
     iam_instance_profile = var.instance_profile_name
     instance_type = var.instance_type
@@ -12,8 +13,11 @@ resource "aws_instance" "zookeeper" {
     security_groups = var.security_groups
     user_data = base64encode(data.template_file.user_data.template)
     tags = {
-        Name = "zookeeper_${terraform.workspace}_${var.cluster_id}"
+        Name = "splunk_${terraform.workspace}_${var.cluster_id}"
         ClusterId = var.cluster_id
-        ZookeeperInstance = "zookeeper-${var.cluster_id}"
+    }
+    root_block_device {
+        volume_type = "gp2"
+        volume_size = 15
     }
 }

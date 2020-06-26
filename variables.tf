@@ -1,5 +1,5 @@
 variable "my_ip_cidr" {
-  default = "173.67.202.129/32"
+  default = "70.106.229.141/32"
 }
 variable "key_pair_name" {
   default = "ecs-key-pair-us-east-1"
@@ -18,4 +18,14 @@ variable "mesos_instance_type" {
 }
 variable "environment" {
   default = "development"
+}
+variable "splunk_image_id" {
+  default = "ami-039a49e70ea773ffc"
+}
+variable "splunk_instance_type" {
+  default = "t3.medium"
+}
+variable "enable_splunk" {
+  type = bool
+  default = true
 }

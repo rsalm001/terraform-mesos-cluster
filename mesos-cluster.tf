@@ -1,3 +1,12 @@
+terraform {
+  backend "s3" {
+    bucket = "terraform-remote-state-mesos"
+    key    = "cluster/mesos/terraform.tfstate"
+    region = "us-east-1"
+    dynamodb_table = "terraform-state-locking"
+  }
+}
+
 provider "aws" {
   profile = "default"
   region  = "us-east-1"
@@ -27,12 +36,12 @@ resource "random_id" "cluster_id" {
 # Mesos security group shared across all components for ease
 # ------------------------------------------------------------------------------------
 resource "aws_security_group" "mesos_security_group" {
-  name        = "mesos_security_group"
+  name        = "mesos_security_group_${terraform.workspace}"
   description = "Mesos shared security group"
   vpc_id      = data.aws_vpc.default_vpc.id
 
   tags = {
-    Name = "mesos-shared-security-group"
+    Name = "mesos-shared-security-group_${terraform.workspace}"
   }
 }
 
@@ -41,7 +50,7 @@ resource "aws_security_group_rule" "all_egress" {
   from_port         = -1
   to_port           = -1
   protocol          = -1
-  security_group_id = "${aws_security_group.mesos_security_group.id}"
+  security_group_id = aws_security_group.mesos_security_group.id
   cidr_blocks       = ["0.0.0.0/0"]
 }
 resource "aws_security_group_rule" "mesos_security_group_self_to" {
@@ -49,15 +58,15 @@ resource "aws_security_group_rule" "mesos_security_group_self_to" {
   from_port                = 0
   to_port                  = 65535
   protocol                 = -1
-  security_group_id        = "${aws_security_group.mesos_security_group.id}"
-  source_security_group_id = "${aws_security_group.mesos_security_group.id}"
+  security_group_id        = aws_security_group.mesos_security_group.id
+  source_security_group_id = aws_security_group.mesos_security_group.id
 }
 resource "aws_security_group_rule" "home_router_cidr" {
   type              = "ingress"
   from_port         = 0
   to_port           = 65535
   protocol          = "tcp"
-  security_group_id = "${aws_security_group.mesos_security_group.id}"
+  security_group_id = aws_security_group.mesos_security_group.id
   cidr_blocks       = [var.my_ip_cidr]
 }
 
@@ -66,7 +75,7 @@ resource "aws_security_group_rule" "home_router_cidr" {
 # ------------------------------------------------------------------------------------
 
 resource "aws_iam_role" "mesos_ec2_role" {
-  name = "mesos_ec2_role"
+  name = "mesos_ec2_role_${terraform.workspace}"
   path = "/"
 
   assume_role_policy = <<EOF
@@ -90,17 +99,17 @@ EOF
 }
 
 resource "aws_iam_role_policy_attachment" "s3_full_attachment" {
-  role       = "${aws_iam_role.mesos_ec2_role.name}"
+  role       = aws_iam_role.mesos_ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 }
 resource "aws_iam_role_policy_attachment" "ec2_full_attachment" {
-  role       = "${aws_iam_role.mesos_ec2_role.name}"
+  role       = aws_iam_role.mesos_ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
 }
 
 resource "aws_iam_instance_profile" "mesos_ec2_instance_profile" {
-  name = "mesos_ec2_instance_profile"
-  role = "${aws_iam_role.mesos_ec2_role.name}"
+  name = "mesos_ec2_instance_profile_${terraform.workspace}"
+  role = aws_iam_role.mesos_ec2_role.name
 }
 
 
@@ -114,11 +123,28 @@ module "zookeeper" {
     instance_type = var.zookeeper_instance_type
     image_id = var.zookeeper_image_id
     key_pair_name = var.key_pair_name
-    cluster_id = "${random_id.cluster_id.b64_std}"
+    cluster_id = random_id.cluster_id.b64_std
     subnet_id = data.aws_subnet.subnet_us_east_1d.id
     instance_profile_name = aws_iam_instance_profile.mesos_ec2_instance_profile.name
-    security_groups = ["${aws_security_group.mesos_security_group.id}"]
-    environment = var.environment
+    security_groups = [aws_security_group.mesos_security_group.id]
+    environment = terraform.workspace
+}
+
+# ------------------------------------------------------------------------------------
+# Splunk instance (standalone for now)
+# ------------------------------------------------------------------------------------
+module "splunk" {
+    source = "./modules/splunk"
+
+    enabled = var.enable_splunk
+    instance_type = var.splunk_instance_type
+    image_id = var.splunk_image_id
+    key_pair_name = var.key_pair_name
+    cluster_id = random_id.cluster_id.b64_std
+    subnet_id = data.aws_subnet.subnet_us_east_1d.id
+    instance_profile_name = aws_iam_instance_profile.mesos_ec2_instance_profile.name
+    security_groups = [aws_security_group.mesos_security_group.id]
+    environment = terraform.workspace
 }
 
 # ------------------------------------------------------------------------------------
@@ -133,13 +159,13 @@ module "mesos-master" {
     mesos_image_id = var.mesos_image_id
     key_pair_name = var.key_pair_name
     instance_profile_name = aws_iam_instance_profile.mesos_ec2_instance_profile.name
-    security_groups = ["${aws_security_group.mesos_security_group.id}"]
+    security_groups = [aws_security_group.mesos_security_group.id]
     instance_type = var.mesos_instance_type
-    cluster_id = "${random_id.cluster_id.b64_std}"
+    cluster_id = random_id.cluster_id.b64_std
     asg_min_size = 1
     asg_max_size = 1
     asg_desired_capacity = 1
-    environment = var.environment
+    environment = terraform.workspace
 }
 
 # ------------------------------------------------------------------------------------
@@ -153,13 +179,13 @@ module "mesos-agent" {
     mesos_image_id = var.mesos_image_id
     key_pair_name = var.key_pair_name
     instance_profile_name = aws_iam_instance_profile.mesos_ec2_instance_profile.name
-    security_groups = ["${aws_security_group.mesos_security_group.id}"]
+    security_groups = [aws_security_group.mesos_security_group.id]
     instance_type = var.mesos_instance_type
-    cluster_id = "${random_id.cluster_id.b64_std}"
+    cluster_id = random_id.cluster_id.b64_std
     asg_min_size = 1
     asg_max_size = 4
-    asg_desired_capacity = 3
-    environment = var.environment
+    asg_desired_capacity = 1
+    environment = terraform.workspace
 }
 
 # ------------------------------------------------------------------------------------
@@ -173,11 +199,11 @@ module "mesos-marathon" {
     mesos_image_id = var.mesos_image_id
     key_pair_name = var.key_pair_name
     instance_profile_name = aws_iam_instance_profile.mesos_ec2_instance_profile.name
-    security_groups = ["${aws_security_group.mesos_security_group.id}"]
+    security_groups = [aws_security_group.mesos_security_group.id]
     instance_type = var.mesos_instance_type
-    cluster_id = "${random_id.cluster_id.b64_std}"
+    cluster_id = random_id.cluster_id.b64_std
     asg_min_size = 1
-    asg_max_size = 1
+    asg_max_size = 2
     asg_desired_capacity = 1
-    environment = var.environment
+    environment = terraform.workspace
 }

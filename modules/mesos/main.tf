@@ -1,16 +1,17 @@
 
 
 data "template_file" "user_data" {
-    template = "${file("userdata/mesos.tpl")}"
+    template = file("${path.root}/userdata/mesos.tpl")
 }
 
 resource "aws_launch_configuration" "mesos_launch_config" {
+    name = "mesos_${var.mesos_type}_lc_${terraform.workspace}_${var.cluster_id}"
     key_name = var.key_pair_name
     image_id = var.mesos_image_id
     iam_instance_profile = var.instance_profile_name
     security_groups = var.security_groups
     instance_type = var.instance_type
-    user_data = "${base64encode(data.template_file.user_data.template)}"
+    user_data = base64encode(data.template_file.user_data.template)
 
     root_block_device {
         volume_type = "gp2"
@@ -19,6 +20,7 @@ resource "aws_launch_configuration" "mesos_launch_config" {
 }
 
 resource "aws_autoscaling_group" "mesos_asg" {
+    name = "mesos_${var.mesos_type}_asg_${terraform.workspace}_${var.cluster_id}"
     availability_zones = ["us-east-1b", "us-east-1c", "us-east-1d"]
     launch_configuration = aws_launch_configuration.mesos_launch_config.name
     min_size = var.asg_min_size
@@ -27,7 +29,7 @@ resource "aws_autoscaling_group" "mesos_asg" {
 
     tag {
         key                 = "Name"
-        value               = var.mesos_type
+        value               = "mesos_${var.mesos_type}_asg_${terraform.workspace}_${var.cluster_id}"
         propagate_at_launch = true
     }
     tag {
