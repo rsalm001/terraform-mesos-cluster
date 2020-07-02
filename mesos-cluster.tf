@@ -27,6 +27,10 @@ data "aws_subnet" "subnet_us_east_1d" {
   }
 }
 
+data "http" "myip" {
+  url = "http://ipv4.icanhazip.com"
+}
+
 # Unique id to reference all other resouces under this template (useful for tags)
 resource "random_id" "cluster_id" {
   byte_length = 8
@@ -67,7 +71,7 @@ resource "aws_security_group_rule" "home_router_cidr" {
   to_port           = 65535
   protocol          = "tcp"
   security_group_id = aws_security_group.mesos_security_group.id
-  cidr_blocks       = [var.my_ip_cidr]
+  cidr_blocks       = ["${chomp(data.http.myip.body)}/32"]
 }
 
 # ------------------------------------------------------------------------------------
@@ -117,18 +121,18 @@ resource "aws_iam_instance_profile" "mesos_ec2_instance_profile" {
 # Zookeeper instance (standalone for now)
 # ------------------------------------------------------------------------------------
 
-module "zookeeper" {
-    source = "./modules/zookeeper"
-
-    instance_type = var.zookeeper_instance_type
-    image_id = var.zookeeper_image_id
-    key_pair_name = var.key_pair_name
-    cluster_id = random_id.cluster_id.b64_std
-    subnet_id = data.aws_subnet.subnet_us_east_1d.id
-    instance_profile_name = aws_iam_instance_profile.mesos_ec2_instance_profile.name
-    security_groups = [aws_security_group.mesos_security_group.id]
-    environment = terraform.workspace
-}
+//module "zookeeper" {
+//    source = "./modules/zookeeper"
+//
+//    instance_type = var.zookeeper_instance_type
+//    image_id = var.zookeeper_image_id
+//    key_pair_name = var.key_pair_name
+//    cluster_id = random_id.cluster_id.b64_std
+//    subnet_id = data.aws_subnet.subnet_us_east_1d.id
+//    instance_profile_name = aws_iam_instance_profile.mesos_ec2_instance_profile.name
+//    security_groups = [aws_security_group.mesos_security_group.id]
+//    environment = terraform.workspace
+//}
 
 # ------------------------------------------------------------------------------------
 # Splunk instance (standalone for now)
@@ -148,6 +152,23 @@ module "splunk" {
 }
 
 # ------------------------------------------------------------------------------------
+# Fluentd instance (standalone for now)
+# ------------------------------------------------------------------------------------
+//module "fluentd" {
+//    source = "./modules/fluentd"
+//
+//    enabled = var.enable_fluentd
+//    instance_type = var.fluentd_instance_type
+//    image_id = var.fluentd_image_id
+//    key_pair_name = var.key_pair_name
+//    cluster_id = random_id.cluster_id.b64_std
+//    subnet_id = data.aws_subnet.subnet_us_east_1d.id
+//    instance_profile_name = aws_iam_instance_profile.mesos_ec2_instance_profile.name
+//    security_groups = [aws_security_group.mesos_security_group.id]
+//    environment = terraform.workspace
+//}
+
+# ------------------------------------------------------------------------------------
 # Mesos Master(s)
 # ------------------------------------------------------------------------------------
 
@@ -162,7 +183,7 @@ module "mesos-master" {
     security_groups = [aws_security_group.mesos_security_group.id]
     instance_type = var.mesos_instance_type
     cluster_id = random_id.cluster_id.b64_std
-    asg_min_size = 1
+    asg_min_size = 0
     asg_max_size = 1
     asg_desired_capacity = 1
     environment = terraform.workspace
@@ -182,7 +203,7 @@ module "mesos-agent" {
     security_groups = [aws_security_group.mesos_security_group.id]
     instance_type = var.mesos_instance_type
     cluster_id = random_id.cluster_id.b64_std
-    asg_min_size = 1
+    asg_min_size = 0
     asg_max_size = 4
     asg_desired_capacity = 1
     environment = terraform.workspace
@@ -202,7 +223,7 @@ module "mesos-marathon" {
     security_groups = [aws_security_group.mesos_security_group.id]
     instance_type = var.mesos_instance_type
     cluster_id = random_id.cluster_id.b64_std
-    asg_min_size = 1
+    asg_min_size = 0
     asg_max_size = 2
     asg_desired_capacity = 1
     environment = terraform.workspace

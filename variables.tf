@@ -1,6 +1,3 @@
-variable "my_ip_cidr" {
-  default = "70.106.229.141/32"
-}
 variable "key_pair_name" {
   default = "ecs-key-pair-us-east-1"
 }
@@ -23,9 +20,19 @@ variable "splunk_image_id" {
   default = "ami-039a49e70ea773ffc"
 }
 variable "splunk_instance_type" {
-  default = "t3.medium"
+  default = "t3.small"
 }
 variable "enable_splunk" {
+  type = bool
+  default = true
+}
+variable "fluentd_image_id" {
+  default = "ami-09d95fab7fff3776c"
+}
+variable "fluentd_instance_type" {
+  default = "t3.micro"
+}
+variable "enable_fluentd" {
   type = bool
   default = true
 }

@@ -21,7 +21,7 @@ workspaces with maps to lookup variables
 
 cloud pose
 
-chalis
+chalice
 
 /data/apps/mesos/work-dir/slaves/f0a99383-315f-46ee-9e8d-4db6a6572ada-S1/frameworks/f0a99383-315f-46ee-9e8d-4db6a6572ada-0000/executors/nginx.instance-691d8e6f-b4bb-11ea-af31-024250e24e78._app.1/runs/latest
 
@@ -40,3 +40,11 @@ curl http://ec2-35-153-99-87.compute-1.amazonaws.com:8088/services/collector/eve
 
 
 docker run --name foo2-nginx --publish 80:80 --log-driver=splunk --log-opt splunk-token=cf9cec0e-750c-432d-8638-701c0d16390c --log-opt splunk-url=http://ec2-35-153-99-87.compute-1.amazonaws.com:8088 nginx
+docker run --name test-spring-boot-app --publish 8080:8080 --log-driver=splunk --log-opt splunk-token=cf9cec0e-750c-432d-8638-701c0d16390c --log-opt splunk-url=http://ec2-54-81-254-230.compute-1.amazonaws.com:8088 test-spring-boot-app
+docker run --name test-spring-boot-app --publish 8080:8080 --log-driver=splunk --log-opt splunk-token=cf9cec0e-750c-432d-8638-701c0d16390c --log-opt splunk-url=http://ec2-54-81-254-230.compute-1.amazonaws.com:8088 --log-opt splunk-sourcetype=default --log-opt splunk-format=json test-spring-boot-app
+docker run --name test-spring-boot-app --publish 80:80 --log-driver=fluentd test-spring-boot-app
+
+iTVftvGx4KMbbe
+
+docker run -p 24224:24224 fluent/fluent-bit:latest /fluent-bit/bin/fluent-bit -i forward -o splunk -p host=ec2-54-81-254-230.compute-1.amazonaws.com -p port=8088 -p splunk_token=cf9cec0e-750c-432d-8638-701c0d16390c
+docker run --publish 8080:8080 --log-driver=fluentd test-spring-boot-app
